@@ -1,0 +1,124 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+require 'ipaddr'
+
+class NextIP
+  def initialize(addr)
+    @ip_addr = IPAddr.new(addr).succ
+  end
+
+  def get
+    @ip_addr = @ip_addr.succ
+    @ip_addr
+  end
+
+  def box vagrant_config, name, box, &block
+    ip_addr = get
+
+    vagrant_config.vm.define name do |config|
+      config.vm.box      = box
+      config.vm.hostname = name
+      config.vm.network :private_network, ip: ip_addr.to_s
+
+      config.vm.synced_folder ".", "/vagrant", type: :virtualbox
+
+      config.vm.provider "virtualbox" do |vb, override|
+        # Display the VirtualBox GUI when booting the machine
+        vb.gui = false
+
+        # Customize the amount of memory on the VM:
+        vb.memory = "512"
+        vb.cpus = "4"
+
+        # Specify default provider configuration
+        #  - give the VM a name - can be better localized in the VirtualBox GUI
+        #  - make the DNS resolution faster
+        vb.customize [
+          "modifyvm", :id,
+          "--name", "vbguest_testdrive-#{name}",
+          "--natdnshostresolver1", "on",
+          "--natdnshostresolver2", "on"
+        ]
+      end
+
+      yield(config) if block
+    end
+  end
+end
+
+Vagrant.configure("2") do |config|
+  next_ip = NextIP.new("44.44.0.0/24")
+
+  next_ip.box config, "debian8", "oar-team/debian8"
+  next_ip.box config, "buster", "debian/buster64" do |cfg|
+    cfg.vbguest.installer_hooks[:after_install] = ["/sbin/rcvboxadd quicksetup all"]
+  end
+  next_ip.box config, "opensuse13", "bento/opensuse-13.2"
+  next_ip.box config, "suse12", "elastic/sles-12-x86_64"
+  next_ip.box config, "opensuse151", "bento/opensuse-leap-15.1"
+  next_ip.box config, "ubuntu1204", "ubuntu/precise64"
+  next_ip.box config, "ubuntu1404", "ubuntu/trusty64"
+  next_ip.box config, "ubuntu1804", "ubuntu/bionic64"
+  next_ip.box config, "centos6", "centos/6"
+  next_ip.box config, "centos7", "centos/7" do |cfg|
+    cfg.vbguest.installer_options = { allow_kernel_upgrade: false, enablerepo: true }
+    cfg.vbguest.installer_hooks[:before_install] = ["yum install -y epel-release", "sleep 1"]
+  end
+  next_ip.box config, "centos7-previous", "centos/7" do |cfg|
+    cfg.vbguest.installer = :centos
+    cfg.vbguest.installer_options = { allow_kernel_upgrade: false, enablerepo: true }
+    cfg.vbguest.installer_hooks[:before_install] = ["yum install -y epel-release", "sleep 1"]
+    cfg.vm.box_version = "1809.01"
+  end
+  next_ip.box config, "generic_oracle7", "generic/oracle7"
+  next_ip.box config, "generic_oracle8", "generic/oracle8"
+  next_ip.box config, "centos8", "centos/8" do |cfg|
+    cfg.vbguest.installer_options = { allow_kernel_upgrade: true }
+    cfg.vbguest.installer_hooks[:before_install] = ["yum install -y epel-release", "sleep 1"]
+    cfg.vbguest.installer_hooks[:after_install] = ["/sbin/rcvboxadd quicksetup all"]
+  end
+
+  next_ip.box config, "fedora22", "Fedora-Cloud-Base-Virtualbox-22" do |cfg|
+    cfg.vm.box_url = "https://download.fedoraproject.org/pub/fedora/linux/releases/22/Cloud/x86_64/Images/Fedora-Cloud-Base-Vagrant-22-20150521.x86_64.vagrant-virtualbox.box"
+  end
+  next_ip.box config, "redhat65", "anandbitra/redhat-6.5"
+  next_ip.box config, "rhel8", "generic/rhel8"
+
+  next_ip.box config, "windows10", "vdelarosa/windows-10" do |cfg|
+    cfg.vm.provider "virtualbox" do |vb|
+      vb.memory = "4096"
+      vb.cpus = "2"
+    end
+  end
+  next_ip.box config, "windows2012", "mwrock/Windows2012R2" do |cfg|
+    cfg.vm.provider "virtualbox" do |vb|
+      vb.memory = "4096"
+      vb.cpus = "2"
+    end
+  end
+  next_ip.box config, "windows2016", "mwrock/Windows2016" do |cfg|
+    cfg.vm.provider "virtualbox" do |vb|
+      vb.memory = "4096"
+      vb.cpus = "2"
+    end
+  end
+
+  config.vm.provider "virtualbox" do |v|
+    # v.gui = true
+    v.customize ["modifyvm", :id, "--audio", "none"]
+  end
+
+  config.vbguest.allow_downgrade = false
+
+  # config.vbguest.installer_arguments = "--nox11 -- --force"
+  # config.vbguest.auto_update = false
+  # config.vbguest.iso_path = '/Applications/VirtualBox.app/Contents/MacOS/VBoxGuestAdditions.iso'
+  # config.vbguest.iso_path = 'http://download.virtualbox.org/virtualbox/%{version}/VBoxGuestAdditions_%{version}.iso' #% {version: '4.2.12'}
+  # config.vbguest.iso_path = "#{ENV["HOME"]}/Downloads/VBoxGuestAdditions_4.2.12.iso"
+  # config.vbguest.installer = My_Installer
+
+  # require 'Date'
+  # config.vm.provision :shell, :inline => "touch /vagrant/testrun-#{DateTime.now.strftime '%FT%T.%S%L'}"
+
+end
