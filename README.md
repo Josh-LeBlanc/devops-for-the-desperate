@@ -18,3 +18,5 @@ containerized an app with docker and learned to run and interact with it
 downloaded kubectl and got a deployment and two services up and running with our image of the telnet app and exposed it to the whole computer
 ## ch8
 set up a CI/CD pipeline with skaffold and the google testing tool, and learned how to roll back a kubernetes deployment
+## ch9
+set up application monitoring dashboard using Prometheus, Alertmanager, and Grafana
